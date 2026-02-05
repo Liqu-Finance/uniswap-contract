@@ -18,11 +18,16 @@ contract CreatePoolAndAddLiquidityScript is BaseScript, LiquidityHelpers {
 
     uint24 lpFee = 3000; // 0.30%
     int24 tickSpacing = 60;
-    uint160 startingPrice = 2 ** 96; // Starting price, sqrtPriceX96; floor(sqrt(1) * 2^96)
+    // 1 WETH = 2000 USDT, sqrtPriceX96 for token0=USDT(6 dec)/token1=WETH(18 dec)
+    uint160 startingPrice = 1771595571142957166518320255467520;
 
     // --- liquidity position configuration --- //
-    uint256 public token0Amount = 100e18;
-    uint256 public token1Amount = 100e18;
+    // Desired amounts to deposit
+    uint256 public token0Amount = 10_000e6; // 10k USDT (6 decimals)
+    uint256 public token1Amount = 5 ether;  // 5 WETH (18 decimals)
+    // Max amounts willing to spend (must cover actual requirement)
+    uint256 public token0Max = 100_000e6;   // 100k USDT max
+    uint256 public token1Max = 50 ether;    // 50 WETH max
 
     // range of the position, must be a multiple of tickSpacing
     int24 tickLower;
@@ -42,8 +47,8 @@ contract CreatePoolAndAddLiquidityScript is BaseScript, LiquidityHelpers {
 
         int24 currentTick = TickMath.getTickAtSqrtPrice(startingPrice);
 
-        tickLower = truncateTickSpacing((currentTick - 750 * tickSpacing), tickSpacing);
-        tickUpper = truncateTickSpacing((currentTick + 750 * tickSpacing), tickSpacing);
+        tickLower = truncateTickSpacing((currentTick - 100 * tickSpacing), tickSpacing);
+        tickUpper = truncateTickSpacing((currentTick + 100 * tickSpacing), tickSpacing);
 
         // Converts token amounts to liquidity units
         uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
@@ -55,8 +60,8 @@ contract CreatePoolAndAddLiquidityScript is BaseScript, LiquidityHelpers {
         );
 
         // slippage limits
-        uint256 amount0Max = token0Amount + 1;
-        uint256 amount1Max = token1Amount + 1;
+        uint256 amount0Max = token0Max;
+        uint256 amount1Max = token1Max;
 
         (bytes memory actions, bytes[] memory mintParams) = _mintLiquidityParams(
             poolKey, tickLower, tickUpper, liquidity, amount0Max, amount1Max, deployerAddress, hookData
