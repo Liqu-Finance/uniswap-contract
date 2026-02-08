@@ -4,20 +4,20 @@
 
 ## 📋 Overview
 
-CLMM Liquidity Agent adalah sistem yang memungkinkan AI agents untuk mengelola Concentrated Liquidity Market Maker (CLMM) positions di Uniswap V4 secara trustless. Sistem ini mengintegrasikan:
+CLMM Liquidity Agent is a system that enables AI agents to manage Concentrated Liquidity Market Maker (CLMM) positions on Uniswap V4 in a trustless manner. This system integrates:
 
-- **Uniswap V4 CLMM**: Concentrated liquidity positions dengan capital efficiency maksimal
-- **ERC-8004 Registries**: Identity dan reputation registry untuk agent trust
-- **Multi-Strategy Management**: Conservative, Balanced, dan Degen strategies
+- **Uniswap V4 CLMM**: Concentrated liquidity positions with maximum capital efficiency
+- **ERC-8004 Registries**: Identity and reputation registry for agent trust
+- **Multi-Strategy Management**: Conservative, Balanced, and Degen strategies
 
 ## 🎯 Key Features
 
-- ✅ **Trustless Agent Management**: Agents terverifikasi melalui ERC-8004 IdentityRegistry
-- ✅ **Multi-Strategy Support**: 3 strategi berbeda (Conservative, Balanced, Degen)
-- ✅ **Lock Period Protection**: User funds terlindungi dengan lock period
+- ✅ **Trustless Agent Management**: Agents verified through ERC-8004 IdentityRegistry
+- ✅ **Multi-Strategy Support**: 3 different strategies (Conservative, Balanced, Degen)
+- ✅ **Lock Period Protection**: User funds protected with lock period
 - ✅ **Position Tracking**: Track multiple positions per deposit
-- ✅ **Automated Rebalancing**: Agents dapat close & reopen positions untuk optimize returns
-- ✅ **Security First**: ReentrancyGuard, Ownable, dan strict validation
+- ✅ **Automated Rebalancing**: Agents can close & reopen positions to optimize returns
+- ✅ **Security First**: ReentrancyGuard, Ownable, and strict validation
 
 ## 📁 Project Structure
 
@@ -25,7 +25,7 @@ CLMM Liquidity Agent adalah sistem yang memungkinkan AI agents untuk mengelola C
 uniswap-contract/
 ├── src/
 │   ├── CLMMLiquidityAgent.sol    # Main contract - manages deposits & agents
-│   ├── CLMMRouter.sol             # Router helper untuk CLMM operations
+│   ├── CLMMRouter.sol             # Router helper for CLMM operations
 │   ├── IdentityRegistry.sol       # ERC-8004 identity registry (copied for reference)
 │   ├── ReputationRegistry.sol     # ERC-8004 reputation registry (copied for reference)
 │   └── interfaces/
@@ -43,8 +43,8 @@ uniswap-contract/
 
 ### 1. CLMMLiquidityAgent (Main Contract)
 
-Contract utama yang mengelola:
-- User deposits dengan lock periods
+Main contract that manages:
+- User deposits with lock periods
 - Agent authorization & assignment
 - Position creation & closing
 - Withdrawal management
@@ -72,7 +72,7 @@ enum AgentStrategy {
 
 ### 2. CLMMRouter (Helper Contract)
 
-Stateless helper untuk simplify CLMM operations:
+Stateless helper to simplify CLMM operations:
 - Mint positions (create liquidity)
 - Close positions (remove liquidity)
 - Get position info
@@ -80,12 +80,12 @@ Stateless helper untuk simplify CLMM operations:
 
 ### 3. ERC-8004 Integration
 
-**IdentityRegistry**: Central registry untuk agent identities
+**IdentityRegistry**: Central registry for agent identities
 - Domain registration (`agent.liqu.finance`)
 - Address mapping
 - Spam protection with registration fee
 
-**ReputationRegistry**: Feedback system antar agents
+**ReputationRegistry**: Feedback system between agents
 - Authorization tracking
 - Client-server feedback links
 
@@ -136,12 +136,12 @@ forge test --match-test testDeposit -vvv
 
 ### Two-Step Deployment Process
 
-Deployment dipisah menjadi 2 step untuk menghindari circular dependencies:
+Deployment is separated into 2 steps to avoid circular dependencies:
 
 #### Step 1: Deploy ERC-8004 Registries
 
 ```bash
-# Deploy dari folder agent-erc8004
+# Deploy from agent-erc8004 folder
 cd ../agent-erc8004
 
 forge script script/DeployERC8004.s.sol:DeployERC8004Script \
@@ -151,17 +151,17 @@ forge script script/DeployERC8004.s.sol:DeployERC8004Script \
   --etherscan-api-key $UNISCAN_API_KEY
 ```
 
-**Output:** Simpan addresses:
+**Output:** Save these addresses:
 - IdentityRegistry: `0x...`
 - ReputationRegistry: `0x...`
 - ValidationRegistry: `0x...`
 
 #### Step 2: Deploy CLMM Liquidity Agent
 
-1. Update addresses di [script/DeployCLMM.s.sol](script/DeployCLMM.s.sol):
+1. Update addresses in [script/DeployCLMM.s.sol](script/DeployCLMM.s.sol):
 ```solidity
-address constant IDENTITY_REGISTRY = 0x...; // dari Step 1
-address constant REPUTATION_REGISTRY = 0x...; // dari Step 1
+address constant IDENTITY_REGISTRY = 0x...; // from Step 1
+address constant REPUTATION_REGISTRY = 0x...; // from Step 1
 ```
 
 2. Deploy:
