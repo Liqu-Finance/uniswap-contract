@@ -1,0 +1,146 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.26;
+
+import {Script} from "forge-std/Script.sol";
+import {console2} from "forge-std/console2.sol";
+
+import {CLMMLiquidityAgent} from "../src/CLMMLiquidityAgent.sol";
+import {IdentityRegistry} from "../src/IdentityRegistry.sol";
+import {ReputationRegistry} from "../src/ReputationRegistry.sol";
+import {ValidationRegistry} from "../src/ValidationRegistry.sol";
+
+/**
+ * Deployment Script for the full CLMM Liquidity Agent System + ERC-8004 Registries
+ *
+ * Deploys:
+ *   1. IdentityRegistry
+ *   2. ReputationRegistry (depends on IdentityRegistry)
+ *   3. ValidationRegistry (depends on IdentityRegistry)
+ *   4. CLMMLiquidityAgent (depends on all above + CLMMRouter)
+ *   5. Registers agent wallets in IdentityRegistry
+ *   6. Authorizes agents in CLMMLiquidityAgent
+ *
+ * Usage:
+ *   forge script script/DeployAgent.s.sol:DeployAgentScript \
+ *     --rpc-url $UNICHAIN_SEPOLIA_RPC_URL --broadcast --verify
+ */
+contract DeployAgentScript is Script {
+
+    // ══════════════════════════════════════════════════════
+    //  CONFIGURATION - UPDATE THESE
+    // ══════════════════════════════════════════════════════
+
+    // Existing deployments on Unichain Sepolia
+    address constant CLMM_ROUTER = 0x11A74D375951D27a3E159a7B6CFfaa7B2A2cbC36;
+    address constant POSITION_MANAGER = 0xf969Aee60879C54bAAed9F3eD26147Db216Fd664;
+    address constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
+
+    // Pool configuration (USDT / WETH)
+    address constant TOKEN0 = 0x4dABf45C8cF333Ef1e874c3FDFC3C86799af80c8; // USDT
+    address constant TOKEN1 = 0xf96c5C189a949C73745a277A4Acf071B1B9f6DF5; // WETH
+    uint24 constant FEE = 3000; // 0.3%
+    int24 constant TICK_SPACING = 60;
+    address constant HOOKS = address(0);
+
+    // Agent wallet addresses + domains
+    address constant CONSERVATIVE_AGENT = 0x5b6A404F8958E7e10028301549e61435925725Bf;
+    address constant BALANCED_AGENT     = 0x6c52aAD1Cbb66C0f666b62b36261d2f2205A8607;
+    address constant DEGEN_AGENT        = 0x5B20B5a4Bba73bC6363fBE90E6b2Ab4fFF5C820e;
+
+    string constant CONSERVATIVE_DOMAIN = "conservative.liqu.finance";
+    string constant BALANCED_DOMAIN     = "balanced.liqu.finance";
+    string constant DEGEN_DOMAIN        = "degen.liqu.finance";
+
+    function run() external {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+
+        vm.startBroadcast(deployerPrivateKey);
+
+        console2.log("=========================================");
+        console2.log(" Deploying CLMM Agent + ERC-8004 System");
+        console2.log("=========================================");
+
+        // ── 1. Deploy ERC-8004 Registries ──────────────────
+
+        console2.log("\n1. Deploying IdentityRegistry...");
+        IdentityRegistry identityRegistry = new IdentityRegistry();
+        console2.log("   IdentityRegistry:", address(identityRegistry));
+
+        console2.log("\n2. Deploying ReputationRegistry...");
+        ReputationRegistry reputationRegistry = new ReputationRegistry(address(identityRegistry));
+        console2.log("   ReputationRegistry:", address(reputationRegistry));
+
+        console2.log("\n3. Deploying ValidationRegistry...");
+        ValidationRegistry validationRegistry = new ValidationRegistry(address(identityRegistry));
+        console2.log("   ValidationRegistry:", address(validationRegistry));
+
+        // ── 2. Register agents in IdentityRegistry ─────────
+
+        console2.log("\n4. Registering agents in IdentityRegistry...");
+
+        // REGISTRATION_FEE is 0 ether in the current implementation
+        uint256 fee = identityRegistry.REGISTRATION_FEE();
+
+        identityRegistry.newAgent{value: fee}(CONSERVATIVE_DOMAIN, CONSERVATIVE_AGENT);
+        console2.log("   Registered Conservative:", CONSERVATIVE_AGENT);
+
+        identityRegistry.newAgent{value: fee}(BALANCED_DOMAIN, BALANCED_AGENT);
+        console2.log("   Registered Balanced:", BALANCED_AGENT);
+
+        identityRegistry.newAgent{value: fee}(DEGEN_DOMAIN, DEGEN_AGENT);
+        console2.log("   Registered Degen:", DEGEN_AGENT);
+
+        // ── 3. Deploy CLMMLiquidityAgent ────────────────────
+
+        console2.log("\n5. Deploying CLMMLiquidityAgent...");
+        CLMMLiquidityAgent agent = new CLMMLiquidityAgent(
+            CLMM_ROUTER,
+            POSITION_MANAGER,
+            PERMIT2,
+            address(identityRegistry),
+            address(reputationRegistry),
+            CLMMLiquidityAgent.PoolInfo({
+                token0: TOKEN0,
+                token1: TOKEN1,
+                fee: FEE,
+                tickSpacing: TICK_SPACING,
+                hooks: HOOKS
+            })
+        );
+        console2.log("   CLMMLiquidityAgent:", address(agent));
+
+        // ── 4. Setup router approvals ───────────────────────
+
+        console2.log("\n6. Setting up router approvals...");
+        agent.setupRouterApprovals();
+
+        // ── 5. Authorize agents in CLMMLiquidityAgent ───────
+
+        console2.log("\n7. Authorizing agents...");
+
+        agent.authorizeAgent(CONSERVATIVE_AGENT, CLMMLiquidityAgent.AgentStrategy.CONSERVATIVE);
+        console2.log("   Authorized Conservative");
+
+        agent.authorizeAgent(BALANCED_AGENT, CLMMLiquidityAgent.AgentStrategy.BALANCED);
+        console2.log("   Authorized Balanced");
+
+        agent.authorizeAgent(DEGEN_AGENT, CLMMLiquidityAgent.AgentStrategy.DEGEN);
+        console2.log("   Authorized Degen");
+
+        vm.stopBroadcast();
+
+        // ── Summary ─────────────────────────────────────────
+
+        console2.log("\n=========================================");
+        console2.log(" Deployment Complete!");
+        console2.log("=========================================");
+        console2.log("\nContracts deployed:");
+        console2.log("  IDENTITY_REGISTRY   =", address(identityRegistry));
+        console2.log("  REPUTATION_REGISTRY =", address(reputationRegistry));
+        console2.log("  VALIDATION_REGISTRY =", address(validationRegistry));
+        console2.log("  CLMM_LIQUIDITY_AGENT=", address(agent));
+        console2.log("\nExisting:");
+        console2.log("  CLMM_ROUTER         =", CLMM_ROUTER);
+        console2.log("  POSITION_MANAGER    =", POSITION_MANAGER);
+    }
+}
